@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 
 
 #[derive(Clone)]
@@ -9,6 +10,21 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
 	pub fn zeros() -> Matrix<ROWS, COLS> {
 		Matrix {
 			data: [[0.0; COLS]; ROWS]
+		}
+	}
+
+	pub fn random() -> Matrix<ROWS, COLS> {
+		let mut rng = thread_rng();
+		let mut data = [[0.0; COLS]; ROWS];
+
+		for row in 0..ROWS {
+			for col in 0..COLS {
+				data[row][col] = rng.gen::<f64>() * 2.0 - 1.0;
+			}
+		}
+
+		Matrix {
+			data
 		}
 	}
 
