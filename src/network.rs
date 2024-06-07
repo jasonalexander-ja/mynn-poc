@@ -1,7 +1,7 @@
 use super::{activations::Activation, matrix::Matrix};
 
 pub trait Layer<const COLS: usize, const TARGET: usize> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: Activation<'a>) -> [f64; TARGET];
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; TARGET];
 
     fn back_propagate<'a>(&mut self, lrate: f64, outputs: [f64; TARGET], targets: [f64; TARGET], act: &Activation<'a>) -> BackProps<COLS>;
 }
@@ -26,11 +26,11 @@ impl <const ROWS: usize, const COLS: usize, const TARGET: usize, T: Layer<ROWS, 
 }
 
 impl <const ROWS: usize, const COLS: usize, const TARGET: usize, T: Layer<ROWS, TARGET>> Layer<COLS, TARGET> for ProcessLayer<ROWS, COLS, TARGET, T> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: Activation<'a>) -> [f64; TARGET] {
-        self.data = feed.clone();
-        let result = self.weights.multiply(&feed)
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; TARGET] {
+        self.data = feed;
+        let result = self.weights.multiply(&self.data)
             .add(&self.biases)
-            .map(&act.function);
+            .map(act.function);
         self.next.feed_forward(result, act)
     }
 
@@ -52,7 +52,7 @@ impl <const ROWS: usize, const COLS: usize, const TARGET: usize, T: Layer<ROWS, 
 pub struct EndLayer<const TARGET: usize>();
 
 impl <const COLS: usize> Layer<COLS, COLS> for EndLayer<COLS> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, _act: Activation<'a>) -> [f64; COLS] {
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, _act: &Activation<'a>) -> [f64; COLS] {
         feed.transpose().data[0]
     }
 
@@ -60,7 +60,7 @@ impl <const COLS: usize> Layer<COLS, COLS> for EndLayer<COLS> {
         let parsed = Matrix::from([outputs]).transpose();
         let errors = Matrix::from([targets]).transpose().subtract(&parsed);
         let gradients = parsed.map(&act.derivative);
-        BackProps (errors, gradients)
+        BackProps(errors, gradients)
     }
 }
 
