@@ -164,3 +164,108 @@ let network: ActiveLayer<1, 2, ActiveLayer<1, 3, EndLayer<1>>> = ActiveLayer(Act
 ```
 
 And we're done, the only difference between the code in this explanation and the full POC in this repository is some small additions for easier operation for feeding forward and back propagation, but this shows all of the important features that allow for entirely stack-memory based operation and type safety! 
+
+### The POC 
+
+There are a few differences between the POC and the examples types above. 
+
+Firstly and most obvious is that the layer trait has and a const generic parameter named `END_S`, this is the number of neurons on the last layer, this is thus present on all layers and means that when we are forward feeding (I.E. predicting) and back propagating (I.E. correcting) we know the size of the array being passed back and forward is;
+
+```rust
+use super::{activations::Activation, matrix::Matrix};
+
+pub trait Layer<const COLS: usize, const END_S: usize> {
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; END_S];
+
+    fn back_propagate<'a>(&mut self, lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<COLS>;
+}
+
+
+pub struct ProcessLayer<const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, END_S>> {
+    ...
+}
+
+impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, END_S>> Layer<COLS, END_S> for ProcessLayer<ROWS, COLS, END_S, T> {
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; END_S] {
+        ...
+    }
+    fn back_propagate<'a>(&mut self, lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<COLS> {
+        ...
+    }
+}
+
+
+pub struct EndLayer<const END_S: usize>();
+
+impl <const END_S: usize> Layer<END_S, END_S> for EndLayer<END_S> {
+    fn feed_forward<'a>(&mut self, feed: Matrix<END_S, 1>, _act: &Activation<'a>) -> [f64; END_S] {
+        feed.transpose().data[0]
+    }
+    fn back_propagate<'a>(&mut self, _lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<END_S> {
+        ...
+    }
+}
+
+pub struct BackProps<const COLS: usize>(Matrix<COLS, 1>, Matrix<COLS, 1>);
+
+```
+
+The methods `feed_forward` and `back_propagate` are how we use the model to make predictions and run corrections, the details of how they work aren't too relevant to this POC. 
+
+The final difference is in the process layer struct, there is an extra field in there named `data` that contains the data that layer was fed from the latest feed forward, this is important to store when running `back_propagate` and we are making corrections. 
+
+```rust
+pub struct ProcessLayer<const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, END_S>> {
+    pub next: T,
+    pub weights: Matrix<ROWS, COLS>,
+    pub biases: Matrix<ROWS, 1>,
+    pub data: Matrix<COLS, 1>
+}
+```
+
+#### Using the POC 
+
+To instantiate the proof of concept network, this is similar to the example from the types example above just that we need to specify the final layer size in all of our layers until the end layer, for instance a 2, 3, 1 neural network like the example above is: 
+
+```rust 
+let mut network: ProcessLayer<3, 2, 1, ProcessLayer<1, 3, 1, EndLayer<1>>> = 
+    ProcessLayer::new(ProcessLayer::new(EndLayer()));
+```
+
+We can then set up some simple training data, for instance we can try to predict the output of a 2 input XOR gate, this has 4 possible states so we just need 4 data sets;
+
+```rust
+let inputs: [[f64; 2]; 4] = [
+    [0.0, 0.0], [0.0, 1.0],
+    [1.0, 0.0], [1.0, 1.0],
+];
+let targets: [[f64; 1]; 4] = [ [0.0], [1.0], [1.0], [0.0], ];
+```
+
+We can then feed this into our network above using the train method, specifying a learning rate, the number of epochs (the number of times it will try to predict the data and go back and make corrections), and an activation function (a sigmoid activation function is provided). In this case we specify a learning rate of 0.5 and 10,000 epochs. 
+
+```rust
+network.train(0.5, inputs, targets, 10_000, &SIGMOID);
+
+```
+
+Awesome, now we can see how our neural network did using the predict method and specifying the same activation function and giving it some data: 
+
+```rust
+println!("0 and 0: {:?}", network.predict([0.0, 0.0], &SIGMOID));
+println!("1 and 0: {:?}", network.predict([1.0, 0.0], &SIGMOID));
+println!("0 and 1: {:?}", network.predict([0.0, 1.0], &SIGMOID));
+println!("1 and 1: {:?}", network.predict([1.0, 1.0], &SIGMOID));
+```
+
+We should see the outputs along the lines of:
+
+```
+0 and 0: [0.009464095466212581]
+1 and 0: [0.9878240431204596]
+0 and 1: [0.9878248964508319]
+1 and 1: [0.014166198831006123]
+```
+
+Great! Neural networks are never 100% certain so this is expected. 
+
