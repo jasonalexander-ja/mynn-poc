@@ -1,8 +1,9 @@
 use std::f64::consts::E;
+use super::Float;
 
 pub struct Activation<'a> {
-    pub function: &'a dyn Fn(f64) -> f64,
-    pub derivative: &'a dyn Fn(f64) -> f64
+    pub function: &'a dyn Fn(Float) -> Float,
+    pub derivative: &'a dyn Fn(Float) -> Float
 }
 
 pub const SIGMOID: Activation = Activation {

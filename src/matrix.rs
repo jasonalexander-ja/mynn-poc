@@ -1,9 +1,10 @@
 use rand::{thread_rng, Rng};
+use super::Float;
 
 
 #[derive(Clone)]
 pub struct Matrix<const ROWS: usize, const COLS: usize> {
-	pub data: [[f64; COLS]; ROWS],
+	pub data: [[Float; COLS]; ROWS],
 }
 
 impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
@@ -19,7 +20,7 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
 
 		for row in 0..ROWS {
 			for col in 0..COLS {
-				data[row][col] = rng.gen::<f64>() * 2.0 - 1.0;
+				data[row][col] = rng.gen::<Float>() * 2.0 - 1.0;
 			}
 		}
 
@@ -90,7 +91,7 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
 		}
 	}
 
-	pub fn map(&self, function: &dyn Fn(f64) -> f64) -> Matrix<ROWS, COLS> {
+	pub fn map(&self, function: &dyn Fn(Float) -> Float) -> Matrix<ROWS, COLS> {
 
 		let mut data = [[0.0; COLS]; ROWS];
 		for row in 0..ROWS {
@@ -104,7 +105,7 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
 		}
 	}
 
-	pub fn from(data: [[f64; COLS]; ROWS]) -> Matrix<ROWS, COLS> {
+	pub fn from(data: [[Float; COLS]; ROWS]) -> Matrix<ROWS, COLS> {
 		Matrix {
 			data
 		}

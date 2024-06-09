@@ -5,6 +5,8 @@ pub mod activations;
 use network::{EndLayer, ProcessLayer};
 use activations::SIGMOID;
 
+type Float = f64;
+
 macro_rules! network_instantiate {
     ($a:expr, $b:expr) => {
         EndLayer()
@@ -77,7 +79,7 @@ fn main() {
         [1.0], 
         [1.0], 
         [0.0], 
-    ];
+    ];  
 
 
     let mut network = network!(2, 3, 1);

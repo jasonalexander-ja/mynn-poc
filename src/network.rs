@@ -1,9 +1,10 @@
 use super::{activations::Activation, matrix::Matrix};
+use super::Float;
 
 pub trait Layer<const COLS: usize, const END_S: usize> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; END_S];
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [Float; END_S];
 
-    fn back_propagate<'a>(&mut self, lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<COLS>;
+    fn back_propagate<'a>(&mut self, lrate: Float, outputs: [Float; END_S], targets: [Float; END_S], act: &Activation<'a>) -> BackProps<COLS>;
 }
 
 
@@ -24,11 +25,11 @@ impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, E
         }
     }
 
-    pub fn predict<'a>(&mut self, data: [f64; COLS], act: &Activation<'a>) -> [f64; END_S] {
+    pub fn predict<'a>(&mut self, data: [Float; COLS], act: &Activation<'a>) -> [Float; END_S] {
         self.feed_forward(Matrix::from([data]).transpose(), act)
     }
 
-    pub fn train<'a, const DATA_S: usize>(&mut self, lrate: f64, inputs: [[f64; COLS]; DATA_S], targets: [[f64; END_S]; DATA_S], epochs: usize, act: &Activation<'a>) {
+    pub fn train<'a, const DATA_S: usize>(&mut self, lrate: Float, inputs: [[Float; COLS]; DATA_S], targets: [[Float; END_S]; DATA_S], epochs: usize, act: &Activation<'a>) {
         for _ in 1..=epochs {
             for i in 0..DATA_S {
                 let outputs = self.feed_forward(Matrix::from([inputs[i]]).transpose(), act);
@@ -40,7 +41,7 @@ impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, E
 }
 
 impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, END_S>> Layer<COLS, END_S> for ProcessLayer<ROWS, COLS, END_S, T> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [f64; END_S] {
+    fn feed_forward<'a>(&mut self, feed: Matrix<COLS, 1>, act: &Activation<'a>) -> [Float; END_S] {
         self.data = feed;
         let result = self.weights.multiply(&self.data)
             .add(&self.biases)
@@ -48,7 +49,7 @@ impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, E
         self.next.feed_forward(result, act)
     }
 
-    fn back_propagate<'a>(&mut self, lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<COLS> {
+    fn back_propagate<'a>(&mut self, lrate: Float, outputs: [Float; END_S], targets: [Float; END_S], act: &Activation<'a>) -> BackProps<COLS> {
         let BackProps(errors, gradients) = self.next.back_propagate(lrate, outputs, targets, act);
         let gradients = gradients.dot_multiply(&errors).map(&|x| x * lrate);
 
@@ -66,11 +67,11 @@ impl <const ROWS: usize, const COLS: usize, const END_S: usize, T: Layer<ROWS, E
 pub struct EndLayer<const END_S: usize>();
 
 impl <const END_S: usize> Layer<END_S, END_S> for EndLayer<END_S> {
-    fn feed_forward<'a>(&mut self, feed: Matrix<END_S, 1>, _act: &Activation<'a>) -> [f64; END_S] {
+    fn feed_forward<'a>(&mut self, feed: Matrix<END_S, 1>, _act: &Activation<'a>) -> [Float; END_S] {
         feed.transpose().data[0]
     }
 
-    fn back_propagate<'a>(&mut self, _lrate: f64, outputs: [f64; END_S], targets: [f64; END_S], act: &Activation<'a>) -> BackProps<END_S> {
+    fn back_propagate<'a>(&mut self, _lrate: Float, outputs: [Float; END_S], targets: [Float; END_S], act: &Activation<'a>) -> BackProps<END_S> {
         let parsed = Matrix::from([outputs]).transpose();
         let errors = Matrix::from([targets]).transpose().subtract(&parsed);
         let gradients = parsed.map(&act.derivative);
