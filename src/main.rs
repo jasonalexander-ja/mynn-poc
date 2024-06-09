@@ -31,7 +31,7 @@ macro_rules! network_type {
 }
 
 
-macro_rules! network {
+macro_rules! network_inner {
     (end $end_s:expr) => {
         network_type!($end_s)()
     };
@@ -44,6 +44,23 @@ macro_rules! network {
     (end $end_s:expr, $neurons:expr, $next:expr, $($d:tt)*) => {
         ProcessLayer::<$next, $neurons, $end_s, network_type!(end $end_s, $next, $($d)*)>::new(network_instantiate!($neurons, $next, $($d)*, $end_s))
     }
+}
+
+macro_rules! last_arg {
+    ($x:expr) => ($x);
+    ($x:expr, $($xs:expr),+) => (last_arg!($($xs),+));
+}
+
+macro_rules! network {
+    ($a:expr) => {
+        network_inner!(end $a)
+    };
+    ($a:expr, $b:expr) => {
+        network_inner!(end $b, $a)
+    };
+    ($($xs:expr),+) => {
+        network_inner!(end { (last_arg!($($xs),+)) }, $($xs),+)
+    };
 }
 
 fn main() {
@@ -63,7 +80,7 @@ fn main() {
     ];
 
 
-    let mut network = network!(end 1, 2, 3);
+    let mut network = network!(2, 3, 1);
 
     network.train(0.5, inputs, targets, 10_000, &SIGMOID);
 
